@@ -3,112 +3,179 @@ import axios from 'axios';
 import './App.css';
 
 function App() {
-  const [todos, setTodos] = useState([]);
-  const [title, setTitle] = useState('');
+  const [suivis, setSuivis] = useState([]);
+  const [entreprise, setEntreprise] = useState('');
+  const [poste, setPoste] = useState('');
+  const [lienOffre, setLienOffre] = useState('');
+  const [dateEnvoi, setDateEnvoi] = useState('');
+  const [statut, setStatut] = useState('En attente');
   const [editId, setEditId] = useState(null);
-  const [editText, setEditText] = useState('');
+  const [editData, setEditData] = useState({
+    entreprise: '',
+    poste: '',
+    lienOffre: '',
+    dateEnvoi: '',
+    statut: 'En attente'
+  });
 
-  // Fetch all todos on component mount
   useEffect(() => {
-    fetchTodos();
+    fetchSuivis();
   }, []);
 
-  const fetchTodos = async () => {
+  const fetchSuivis = async () => {
     try {
-      const response = await axios.get('/todos');
-      setTodos(response.data);
+      const response = await axios.get('/suivis');
+      setSuivis(response.data);
     } catch (err) {
-      console.error('Error fetching todos:', err);
+      console.error('Erreur lors de la récupération des candidatures:', err);
     }
   };
 
-  const addTodo = async () => {
-    if (!title.trim()) return;
+  const addSuivi = async () => {
+    if (!entreprise.trim() || !poste.trim()) return;
     
     try {
-      await axios.post('/todos', {
-        title: title.trim(),
-        completed: false
+      await axios.post('/suivis', {
+        entreprise: entreprise.trim(),
+        poste: poste.trim(),
+        lienOffre: lienOffre.trim(),
+        dateEnvoi,
+        statut
       });
-      setTitle('');
-      fetchTodos();
+      setEntreprise('');
+      setPoste('');
+      setLienOffre('');
+      setDateEnvoi('');
+      setStatut('En attente');
+      fetchSuivis();
     } catch (err) {
-      console.error('Error adding todo:', err);
+      console.error('Erreur lors de l\'ajout de la candidature:', err);
     }
   };
 
-  const deleteTodo = async (id) => {
+  const deleteSuivi = async (id) => {
     try {
-      await axios.delete(`/todos/${id}`);
-      fetchTodos();
+      await axios.delete(`/suivis/${id}`);
+      fetchSuivis();
     } catch (err) {
-      console.error('Error deleting todo:', err);
+      console.error('Erreur lors de la suppression:', err);
     }
   };
 
-  const toggleComplete = async (id, completed) => {
+  const updateStatut = async (id, currentStatut) => {
     try {
-      await axios.put(`/todos/${id}`, {
-        completed: !completed
+      await axios.put(`/suivis/${id}`, {
+        statut: currentStatut === 'En attente' ? 'Acceptée' : 
+               currentStatut === 'Acceptée' ? 'Refusée' : 'En attente'
       });
-      fetchTodos();
+      fetchSuivis();
     } catch (err) {
-      console.error('Error updating todo:', err);
+      console.error('Erreur lors de la mise à jour:', err);
     }
   };
 
-  const startEdit = (todo) => {
-    setEditId(todo._id);
-    setEditText(todo.title);
+  const startEdit = (suivi) => {
+    setEditId(suivi._id);
+    setEditData({
+      entreprise: suivi.entreprise,
+      poste: suivi.poste,
+      lienOffre: suivi.lienOffre,
+      dateEnvoi: suivi.dateEnvoi,
+      statut: suivi.statut
+    });
   };
 
   const saveEdit = async () => {
     try {
-      await axios.put(`/todos/${editId}`, {
-        title: editText
-      });
+      await axios.put(`/suivis/${editId}`, editData);
       setEditId(null);
-      fetchTodos();
+      fetchSuivis();
     } catch (err) {
-      console.error('Error updating todo:', err);
+      console.error('Erreur lors de la modification:', err);
     }
   };
 
   return (
     <div className="app">
-      <h1>Todo App</h1>
+      <h1>Application de suivi de candidature</h1>
       
-      <div className="todo-form">
+      <div className="suivi-form">
         <input
           type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter new todo"
-          onKeyPress={(e) => e.key === 'Enter' && addTodo()}
+          value={entreprise}
+          onChange={(e) => setEntreprise(e.target.value)}
+          placeholder="Entreprise"
         />
-        <button onClick={addTodo}>Add</button>
+        <input
+          type="text"
+          value={poste}
+          onChange={(e) => setPoste(e.target.value)}
+          placeholder="Poste"
+        />
+        <input
+          type="text"
+          value={lienOffre}
+          onChange={(e) => setLienOffre(e.target.value)}
+          placeholder="Lien de l'offre"
+        />
+        <input
+          type="date"
+          value={dateEnvoi}
+          onChange={(e) => setDateEnvoi(e.target.value)}
+          placeholder="Date d'envoi"
+        />
+        <select
+          value={statut}
+          onChange={(e) => setStatut(e.target.value)}
+        >
+          <option value="En attente">En attente</option>
+          <option value="Acceptée">Acceptée</option>
+          <option value="Refusée">Refusée</option>
+        </select>
+        <button onClick={addSuivi}>Ajouter</button>
       </div>
 
-      <ul className="todo-list">
-        {todos.map((todo) => (
-          <li key={todo._id} className={todo.completed ? 'completed' : ''}>
-            {editId === todo._id ? (
-              <>
+      <ul className="suivi-list">
+        {suivis.map((suivi) => (
+          <li key={suivi._id} className={suivi.statut.toLowerCase().replace('é', 'e')}>
+            {editId === suivi._id ? (
+              <div className="edit-form">
                 <input
                   type="text"
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
+                  value={editData.entreprise}
+                  onChange={(e) => setEditData({...editData, entreprise: e.target.value})}
                 />
-                <button onClick={saveEdit}>Save</button>
-              </>
+                <input
+                  type="text"
+                  value={editData.poste}
+                  onChange={(e) => setEditData({...editData, poste: e.target.value})}
+                />
+                <select
+                  value={editData.statut}
+                  onChange={(e) => setEditData({...editData, statut: e.target.value})}
+                >
+                  <option value="En attente">En attente</option>
+                  <option value="Acceptée">Acceptée</option>
+                  <option value="Refusée">Refusée</option>
+                </select>
+                <button onClick={saveEdit}>Sauvegarder</button>
+              </div>
             ) : (
               <>
-                <span onClick={() => toggleComplete(todo._id, todo.completed)}>
-                  {todo.title}
-                </span>
+                <div className="suivi-info">
+                  <h3>{suivi.entreprise}</h3>
+                  <p>{suivi.poste}</p>
+                  <p>Envoyé le: {new Date(suivi.dateEnvoi).toLocaleDateString()}</p>
+                  <span className={`statut ${suivi.statut.toLowerCase().replace('é', 'e')}`}>
+                    {suivi.statut}
+                  </span>
+                </div>
                 <div className="actions">
-                  <button onClick={() => startEdit(todo)}>Edit</button>
-                  <button onClick={() => deleteTodo(todo._id)}>Delete</button>
+                  <button onClick={() => updateStatut(suivi._id, suivi.statut)}>
+                    Changer statut
+                  </button>
+                  <button onClick={() => startEdit(suivi)}>Modifier</button>
+                  <button onClick={() => deleteSuivi(suivi._id)}>Supprimer</button>
                 </div>
               </>
             )}
